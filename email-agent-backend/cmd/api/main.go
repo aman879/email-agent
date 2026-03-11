@@ -1,0 +1,42 @@
+// Package main is the entry point for the EMail AI Agent API.
+// It intializes the datbase, wires up dependencie, and starts the HTTP server
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/aman879/email-agent-backend/internal/api"
+	"github.com/aman879/email-agent-backend/internal/config"
+	"github.com/aman879/email-agent-backend/internal/db"
+	"github.com/aman879/email-agent-backend/internal/worker"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+)
+
+func main() {
+	// Load system configurations
+	cfg := config.LoadConfig()
+	store := db.NewStore(cfg.DBPath, cfg.RedisAddr)
+
+	worketEngine := &worker.Engine{Store: store}
+	go worketEngine.StartRunning()
+
+	e := echo.New()
+
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+
+	h := &api.Handler{Store: store}
+	e.GET("/health", h.HealthCheck)
+	e.POST("/campaigns/upload", h.UploadCSV)
+
+	e.Logger.Fatal(e.Start(":" + cfg.Port))
+	serverPort := fmt.Sprintf(":%s", cfg.Port)
+	log.Printf("Starting AI Agent Backend on %s", serverPort)
+
+	if err := e.Start(serverPort); err != nil {
+		log.Fatalf("Critical server failure: %v", err)
+	}
+}
