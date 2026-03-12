@@ -1,5 +1,5 @@
-// Package main is the entry point for the EMail AI Agent API.
-// It intializes the datbase, wires up dependencie, and starts the HTTP server
+// Package main is the entry point for the Email AI Agent API.
+// It initializes the database, wires up dependencies, and starts the HTTP server
 package main
 
 import (
@@ -19,8 +19,8 @@ func main() {
 	cfg := config.LoadConfig()
 	store := db.NewStore(cfg.DBPath, cfg.RedisAddr)
 
-	worketEngine := &worker.Engine{Store: store}
-	go worketEngine.StartRunning()
+	workerEngine := &worker.Engine{Store: store}
+	go workerEngine.StartRunning()
 
 	e := echo.New()
 
@@ -30,12 +30,16 @@ func main() {
 
 	h := &api.Handler{Store: store}
 	e.GET("/health", h.HealthCheck)
+	e.GET("/campaigns", h.ListCampaigns)
 	e.POST("/campaigns", h.CreateCampaign)
 	e.POST("/campaigns/steps", h.AddWorkFlowStep)
 	e.POST("/campaigns/upload", h.UploadCSV)
 
+	 e.GET("/senders", h.ListSenders)
 	e.POST("/senders", h.AddSenderAccount)
 	e.POST("/senders/link", h.LinkSenderToCampaign)
+
+	e.GET("/stats", h.GetStats)
 
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 	serverPort := fmt.Sprintf(":%s", cfg.Port)

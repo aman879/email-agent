@@ -81,11 +81,19 @@ func (e *Engine) ProcessPendingLeads() {
 		e.Store.DB.Model(&lead).Updates(map[string]interface{}{
 			"status":      "sent",
 			"last_msg_id": "tracked",
+			"sent_at":     time.Now(),
 		})
 
 		e.Store.DB.Model(sender).Updates(map[string]interface{}{
 			"sent_count":   sender.SentCount + 1,
 			"last_used_at": time.Now(),
+		})
+
+		// Log activity
+		e.Store.DB.Create(&models.ActivityLog{
+			CampaignID: lead.CampaignID,
+			Type:       "success",
+			Message:    "Sent email to " + lead.Email,
 		})
 
 		log.Printf("Seccessfully sent email to %s using %s", lead.Email, sender.Email)

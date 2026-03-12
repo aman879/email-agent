@@ -3,7 +3,8 @@ name: CI
 on:
   push:
     branches:[main]
-  pull-request
+  pull-request:
+    branches:[main]
 
 jobs:
   

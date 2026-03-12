@@ -31,6 +31,7 @@ func NewStore(dbPath string, redisAdrr string) *Store {
 		&models.Lead{},
 		&models.SenderAccount{},
 		&models.CampaignSender{},
+		&models.ActivityLog{},
 	)
 	if err != nil {
 		log.Fatalf("Database migration failed: %v", err)

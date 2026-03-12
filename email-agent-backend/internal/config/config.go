@@ -1,5 +1,5 @@
-// Package config manages the application configuration and env Variables
-// It provides a centralzied way to access setting likes databse path and server port.
+// Package config manages the application configuration and env variables
+// It provides a centralized way to access settings like database path and server port.
 package config
 
 import (
