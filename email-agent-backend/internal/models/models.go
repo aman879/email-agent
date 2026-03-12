@@ -40,6 +40,7 @@ type Lead struct {
 	Status       string    `gorm:"default:'pending'" json:"status"` // pending, sent, replied, failed
 	NextActionAt time.Time `gorm:"index" json:"next_action_at"`
 	LastMsgId    string    `json:"last_msg_id"` // For threading replies
+	SentAt       time.Time `gorm:"index" json:"sent_at"`
 }
 
 // SenderAccount stores the SMTP/IMAP credentials
@@ -57,10 +58,10 @@ type SenderAccount struct {
 	LastUsedAt time.Time `json:"last_used_at"`
 }
 
-// CampaignSende links a specific email account to a specific campaign
+// CampaignSender links a specific email account to a specific campaign
 type CampaignSender struct {
-	CampaignID uint `gorm:"primaryKey"`
-	SenderID   uint `gotm:"primaryKey"`
+	CampaignID uint `gorm:"primaryKey" json:"campaign_id"`
+	SenderID   uint `gorm:"primaryKey" json:"sender_id"`
 }
 
 // GetMap returns the JSON data as a Go map for template replacement
@@ -68,4 +69,13 @@ func (l *Lead) GetMap() map[string]interface{} {
 	var result map[string]interface{}
 	json.Unmarshal([]byte(l.Data), &result)
 	return result
+}
+
+// ActivityLog tracks important system events
+type ActivityLog struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	CampaignID uint      `gorm:"index" json:"campaign_id"`
+	Type       string    `json:"type"` // info, success, error, warning
+	Message    string    `json:"message"`
+	CreatedAt  time.Time `json:"created_at"`
 }
