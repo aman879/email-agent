@@ -2,13 +2,13 @@
 package worker
 
 import (
-	"bytes"
-	"html/template"
 	"log"
 	"time"
 
 	"github.com/aman879/email-agent-backend/internal/db"
+	"github.com/aman879/email-agent-backend/internal/mail"
 	"github.com/aman879/email-agent-backend/internal/models"
+	"github.com/jinzhu/now"
 )
 
 type Engine struct {
@@ -26,7 +26,7 @@ func (e *Engine) StartRunning() {
 	}
 }
 
-// ProcessPendingLeads finds leads ready for thier next email step
+// ProcessPendingLeads finds leads ready for thier next email ste
 func (e *Engine) ProcessPendingLeads() {
 	var leads []models.Lead
 	now := time.Now()
@@ -35,24 +35,66 @@ func (e *Engine) ProcessPendingLeads() {
 
 	for _, lead := range leads {
 		log.Printf("Worker: Processing lead %s for step %d", lead.Email, lead.CurrentStep)
+		var step models.WorkFlowStep
 
-		e.Store.DB.Model(&lead).Update("status", "sent")
+		err := e.Store.DB.Where("campaign_id = ? AND step_order = ?", lead.CampaignID, lead.CurrentStep).First(&step).Error
+		if err != nil {
+			log.Printf("Skipping lead %s: %v", lead.Email, err)
+			continue
+		}
+
+		combinedTemplate := step.Template
+
+		rawSubject, rawBody, err := mail.ParseTemplate(combinedTemplate)
+		if err != nil {
+			log.Printf("Template error for campaign %d: %v", lead.CampaignID, err)
+			continue
+		}
+
+		sender, err := mail.GetAvialbleSender(e.Store, lead.CampaignID)
+		if err != nil {
+			log.Printf("Skipping lead %s: %v", lead.Email, err)
+			continue
+		}
+
+		leadData := lead.GetMap()
+		finalSubject, _ := mail.RenderTemplate(rawSubject, leadData)
+		finalBody, _ := mail.RenderTemplate(rawBody, leadData)
+
+		emailReq := mail.EmailRequest{
+			From:     sender.Email,
+			To:       lead.Email,
+			Subject:  finalSubject,
+			Body:     finalBody,
+			Password: sender.Password,
+			Host:     sender.SMTPHost,
+			Port:     sender.SMTPPort,
+		}
+
+		err = mail.SendRawEmail(emailReq)
+		if err != nil {
+			log.Printf("Failed to send mail to %s: %v", lead.Email, err)
+			e.Store.DB.Model(&lead).Update("status", "failed")
+			continue
+		}
+
+		e.Store.DB.Model(&lead).Updates(map[string]interface{}{
+			"status":      "sent",
+			"last_msg_id": "tracked",
+		})
+
+		e.Store.DB.Model(sender).Updates(map[string]interface{}{
+			"sent_count":   sender.SentCount + 1,
+			"last_used_at": time.Now(),
+		})
+
+		log.Printf("Seccessfully sent email to %s using %s", lead.Email, sender.Email)
 	}
 }
 
-// RenderTemplate takes an email body with {{.ColumnName}} and replaces it with Lead data.
-func (e *Engine) RenderTemplate(rawTemplate string, lead *models.Lead) (string, error) {
-	data := lead.GetMap()
-
-	tmpl, err := template.New("email").Parse(rawTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	var tpl bytes.Buffer
-	if err := tmpl.Execute(&tpl, data); err != nil {
-		return "", err
-	}
-
-	return tpl.String(), nil
+// ResetDailyCounters zeroes out the SentCount for all account every midnight.
+func (e *Engine) ResetDailyCounters() {
+	e.Store.DB.Model(&models.SenderAccount{}).
+		Where("last_used_at < ?", now.BeginningOfDay()).
+		Update("sent_count", 0)
 }

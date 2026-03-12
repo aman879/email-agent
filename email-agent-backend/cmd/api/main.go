@@ -30,7 +30,12 @@ func main() {
 
 	h := &api.Handler{Store: store}
 	e.GET("/health", h.HealthCheck)
+	e.POST("/campaigns", h.CreateCampaign)
+	e.POST("/campaigns/steps", h.AddWorkFlowStep)
 	e.POST("/campaigns/upload", h.UploadCSV)
+
+	e.POST("/senders", h.AddSenderAccount)
+	e.POST("/senders/link", h.LinkSenderToCampaign)
 
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 	serverPort := fmt.Sprintf(":%s", cfg.Port)

@@ -48,10 +48,19 @@ type SenderAccount struct {
 	Email      string    `gorm:"uniqueIndex;not null" json:"email"`
 	SMTPHost   string    `json:"smtp_host"`
 	SMTPPort   int       `json:"smtp_port"`
+	IMAPHost   string    `json:"imap_host"`
+	IMAPPort   int       `json:"imap_port"`
 	Password   string    `json:"-"` // Neven export password to JSON
 	DailyLimit int       `gorm:"default:50" json:"daily_limit"`
 	SentCount  int       `gorm:"default:0" json:"sent_count"`
+	IsActive   bool      `gorm:"default:true" json:"is_active"`
 	LastUsedAt time.Time `json:"last_used_at"`
+}
+
+// CampaignSende links a specific email account to a specific campaign
+type CampaignSender struct {
+	CampaignID uint `gorm:"primaryKey"`
+	SenderID   uint `gotm:"primaryKey"`
 }
 
 // GetMap returns the JSON data as a Go map for template replacement
