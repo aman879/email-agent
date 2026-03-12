@@ -22,7 +22,7 @@ export function Sidebar() {
         {navItems.map((item) => (
           <Link
             key={item.to}
-            to={item.to as any}
+            to={item.to}
             activeProps={{ className: 'bg-[#111111] text-[#EDEDED]' }}
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-[#888] transition-colors hover:text-[#EDEDED] text-sm font-medium"
           >

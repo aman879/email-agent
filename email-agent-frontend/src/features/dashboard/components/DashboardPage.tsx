@@ -1,4 +1,4 @@
-import { BarChart3, Users, Send, CheckCircle, ArrowUpRight, Activity, Loader2 } from 'lucide-react';
+import { BarChart3, Users, Send, CheckCircle, Activity, Loader2 } from 'lucide-react';
 import { useGetStats } from '../api/useStats';
 
 function timeAgo(dateParam: string | Date) {

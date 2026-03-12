@@ -194,7 +194,7 @@ export function CampaignsPage() {
                   <label className="block text-sm font-medium mb-1">Action Type</label>
                   <select 
                     value={stepData.action_type}
-                    onChange={(e) => setStepData({ ...stepData, action_type: e.target.value as any })}
+                    onChange={(e) => setStepData({ ...stepData, action_type: e.target.value as 'SEND_EMAIL' | 'WAIT' })}
                     className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 outline-none"
                   >
                     <option value="SEND_EMAIL">Send Email</option>
