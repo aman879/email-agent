@@ -2,32 +2,37 @@ name: CI
 
 on:
   push:
-    branches:[main]
-  pull-request:
-    branches:[main]
+    branches: [main, Frontend-ADditions]
+    paths:
+      - 'email-agent-backend/**'
+      - 'email-agent-frontend/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'email-agent-backend/**'
+      - 'email-agent-frontend/**'
 
 jobs:
-  
   backend:
     name: Backend CI
     runs-on: ubuntu-latest
-
-    if: contains(github.event.head_commit.message, '') || contains(join(github.event.commits.*.modified, ','), 'email-agent-backend')
-
+    
     defaults:
       run:
         working-directory: email-agent-backend
 
     steps:
-      - uses: action/checkout@v4
+      - uses: actions/checkout@v4
       
       - name: Setup Go
-        uses: action/setup-go@v5
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.23"
           cache: true
+          cache-dependency-path: email-agent-backend/go.sum
 
-      - name: Download dependencies
+      - name: Install dependencies
         run: go mod download
 
       - name: Run tests
@@ -40,27 +45,25 @@ jobs:
     name: Frontend CI
     runs-on: ubuntu-latest
 
-    if: contains(join(github.event.commits.*.modified, ','), 'email-agent-frontend')
-
     defaults:
       run:
         working-directory: email-agent-frontend
 
     steps:
-      - uses: action/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: aciton/setup-node@v4
+        uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 22
           cache: "npm"
           cache-dependency-path: email-agent-frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint --if-present
 
-      - name: build
+      - name: Build
         run: npm run build
