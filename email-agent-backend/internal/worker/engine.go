@@ -58,7 +58,7 @@ func (e *Engine) ProcessPendingLeads() {
 		}
 
 		leadData := lead.GetMap()
-		finalSubject, _ := mail.RenderTemplate(rawSubject, leadData)
+		finalSubject, _ := mail.RenderTemplte(rawSubject, leadData)
 		finalBody, _ := mail.RenderTemplate(rawBody, leadData)
 
 		emailReq := mail.EmailRequest{
