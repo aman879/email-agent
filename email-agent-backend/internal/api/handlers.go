@@ -86,7 +86,7 @@ func (h *Handler) CreateCampaign(c echo.Context) error {
 // ListCampaigns returns all campaigns with their steps and leads
 func (h *Handler) ListCampaigns(c echo.Context) error {
 	var campaigns []models.Campaign
-	if err := h.Store.DB.Preload("Steps").Preload("Leads").Find(&campaigns).Error; err != nil {
+	if err := h.Store.DB.Preload("Steps.Templates").Preload("Leads").Find(&campaigns).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not fetch campaigns"})
 	}
 	return c.JSON(http.StatusOK, campaigns)
@@ -98,6 +98,12 @@ func (h *Handler) AddWorkFlowStep(c echo.Context) error {
 	step := new(models.WorkFlowStep)
 	if err := c.Bind(step); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid step data"})
+	}
+
+	if step.Template != "" {
+		step.Templates = []models.Template{
+			{Body: step.Template},
+		}
 	}
 
 	if err := h.Store.DB.Create(&step).Error; err != nil {
@@ -163,10 +169,10 @@ func (h *Handler) GetStats(c echo.Context) error {
 	h.Store.DB.Model(&models.Lead{}).Where("status = ?", "replied").Count(&totalReplied)
 
 	// Fetch last 15 days of chart data
-	var chartData []struct {
+	chartData := make([]struct {
 		Date  string `json:"date"`
 		Count int    `json:"count"`
-	}
+	}, 0)
 	h.Store.DB.Raw(`
 		SELECT date(sent_at) as date, count(*) as count 
 		FROM leads 
@@ -176,12 +182,22 @@ func (h *Handler) GetStats(c echo.Context) error {
 		time.Now().AddDate(0, 0, -15)).Scan(&chartData)
 
 	// Fetch recent activity logs
-	var recentLogs []models.ActivityLog
+	recentLogs := make([]models.ActivityLog, 0)
 	h.Store.DB.Order("created_at desc").Limit(10).Find(&recentLogs)
 
 	var conversionRate float64
 	if totalLeads > 0 {
 		conversionRate = (float64(totalReplied) / float64(totalLeads)) * 100
+	}
+
+	if chartData == nil {
+		chartData = make([]struct {
+			Date  string `json:"date"`
+			Count int    `json:"count"`
+		}, 0)
+	}
+	if recentLogs == nil {
+		recentLogs = make([]models.ActivityLog, 0)
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{

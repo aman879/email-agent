@@ -22,12 +22,21 @@ type Campaign struct {
 
 // WorkFlowStep defines what the AI should do and when.
 type WorkFlowStep struct {
-	ID         uint   `gorm:"primaryKey" json:"id"`
-	CampaignID uint   `json:"campaign_id"`
-	StepOrder  int    `json:"step_order"`  // 1, 2, 3...
-	ActionType string `json:"action_type"` // SEND_EMAIL, WAIT
-	DelayHours int    `json:"delay_hours"` // Used if ActionType is WAIT
-	Template   string `gorm:"type:text" json:"template"`
+	ID           uint   	`gorm:"primaryKey" json:"id"`
+	CampaignID   uint   	`json:"campaign_id"`
+	StepOrder    int    	`json:"step_order"`  // 1, 2, 3...
+	ActionType   string 	`json:"action_type"` // SEND_EMAIL, WAIT
+	ConditionKey string 	`json:"condition_key"`
+	ConditionVal string 	`json:"condition_val"`
+	DelayHours   int    	`json:"delay_hours"` // Used if ActionType is WAIT
+	Template     string     `json:"template" gorm:"-"`
+	Templates    []Template `json:"templates"`
+}
+
+type Template struct {
+	Id             uint   `gorm:"primaryKey" json:"id"`
+	WorkFlowStepID uint   `json:"workflow_step_id"`
+	Body           string `gorm:"type:text" json:"body"`
 }
 
 // Lead represents a recipient from the CSV

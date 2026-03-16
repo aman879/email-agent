@@ -1,138 +1,97 @@
-# AI Email Automation Agent
+# Email Agent Backend
 
-> **⚠️ UNDER ACTIVE DEVELOPMENT** — API endpoints, database schema, and core logic are subject to breaking changes. This documentation reflects the current development state and may not be fully accurate.
-
-A 24/7 autonomous email outreach and monitoring system. Built with a high-concurrency **Go** backend and a **React + Vite** frontend, designed to manage bulk email campaigns with dynamic templates, inbox rotation, and real-time reply detection.
+The Go-based engine powering the AI Email Automation Agent. This service handles the REST API, background workers for email dispatch, and IMAP reply monitoring.
 
 ---
 
-## Features
+## 🛠️ Tech Stack
 
-| Feature | Description |
-|---|---|
-| **24/7 Background Worker** | Autonomous engine for scheduling and sending emails without manual intervention |
-| **Dynamic CSV Ingestion** | Import leads with custom headers used as variables in email templates |
-| **Inbox Rotation** | Load-balance outgoing mail across multiple SMTP/IMAP accounts |
-| **State Machine Engine** | Manages complex follow-up sequences based on user-defined timeframes |
-| **Reply Monitoring** | Real-time thread tracking — automatically halts sequences on recipient reply |
-| **Conditional Logic** | Route templates dynamically based on lead data filters |
+- **Language**: Go 1.26+
+- **Web Framework**: [Echo](https://echo.labstack.com/)
+- **Database**: SQLite (managed with Gorm)
+- **Cache / Distributed Lock**: Redis
+- **Reliability**: Atomic operations for email state management.
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
 
-```
-.
-├── email-agent-backend/       # Go 1.21+ REST API & background worker
-│   ├── cmd/api/               # Entrypoint
-│   └── internal/
-│       ├── models/            # SQLite schema definitions
-│       ├── worker/            # 24/7 ticker logic for email dispatch
-│       ├── services/          # CSV parsing & template rendering
-│       └── mail/              # SMTP connections & rotation logic
-├── email-agent-frontend/      # React + Vite dashboard
-└── docker-compose.yml         # Orchestrates backend, frontend, and Redis
-```
+The backend is structured into two main components:
+1. **API Server**: Handles campaign management, lead uploads, and settings.
+2. **Worker Engine**: A background process that scans the database for pending emails and schedules them using a token-bucket approach for rate limiting and inbox rotation.
 
 ---
 
-## Tech Stack
+## 📁 Package Structure
 
-### Backend
-- **Language:** Go 1.21+
-- **Framework:** [Echo](https://echo.labstack.com/) — high-performance REST API
-- **Database:** SQLite (WAL mode for concurrent access)
-- **Cache / Queue:** Redis
-- **ORM:** GORM
-
-### Frontend
-- **Framework:** React 18 (with Hooks)
-- **Bundler:** Vite
-- **State Management:** Zustand
-- **Styling:** Tailwind CSS
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/) and Docker Compose
-- Go 1.21+ *(for local backend development)*
-- Node.js 18+ *(for local frontend development)*
-
----
-
-### Option 1 — Docker (Recommended)
-
-```bash
-git clone <repo-url>
-cd <repo>
-docker-compose up --build
+```text
+internal/
+├── api/        # REST handlers and route definitions
+├── config/     # Environment variable management
+├── db/         # Database initialization and connection
+├── mail/       # SMTP/IMAP protocol logic and rotation
+├── models/     # Gorm database schemas
+├── services/   # Business logic (CSV parsing, template rendering)
+└── worker/     # Ticker-based background job logic
 ```
 
-This starts the backend, frontend, and Redis together.
-
 ---
 
-### Option 2 — Local Development
+## 🚀 Getting Started
 
-#### Backend
+### 📦 Prerequisites
+- Go 1.26+
+- Redis (running locally or via Docker)
+- SQLite
 
-```bash
-cd email-agent-backend
-go mod tidy
-```
-
-Create a `.env` file:
+### ⚙️ Environment Variables
+Create a `.env` file in the root of the backend directory:
 
 ```env
 PORT=8080
 DB_PATH=agent.db
 REDIS_ADDR=localhost:6379
+# (Optional) SMTP/IMAP settings if not managed via DB
 ```
 
-Start the API and worker:
+### 🏃 Running Locally
 
-```bash
-go run cmd/api/main.go
-```
+1. **Install Dependencies**:
+   ```bash
+   go mod download
+   ```
 
-#### Frontend
+2. **Start the Service**:
+   ```bash
+   go run cmd/api/main.go
+   ```
 
-```bash
-cd email-agent-frontend
-npm install
-npm run dev
-```
-
-The dev server starts at `http://localhost:5173` by default.
+The server will initialize the SQLite database (`agent.db`) and start listening on the configured port.
 
 ---
 
-## API Reference
+## 🛣️ API Endpoints (Brief)
 
-> Base URL: `http://localhost:8080`
-
-| Method | Endpoint | Description |
+| Endpoint | Method | Description |
 |---|---|---|
-| `GET` | `/health` | System status check |
-| `POST` | `/campaigns/upload` | Upload CSV and map leads |
-| `POST` | `/settings/accounts` | Add SMTP/IMAP credentials |
-| `GET` | `/campaigns` | List all active sequences |
+| `/health` | `GET` | Health check |
+| `/campaigns` | `GET` | List all campaigns |
+| `/campaigns/upload` | `POST` | Upload CSV and create campaign |
+| `/settings/accounts` | `POST` | Configure SMTP/IMAP accounts |
 
 ---
 
-## Testing
+## 🧪 Testing
 
-Run unit tests for all backend packages:
-
+Run all unit tests:
 ```bash
 go test ./internal/...
 ```
 
 ---
 
-## Contributing
+## ⚖️ Database State Machine
 
-This project is under active development. Contributions, issues, and feature requests are welcome. Please open an issue before submitting a pull request to discuss proposed changes.
+The agent uses a strict status workflow for leads:
+`PENDING` ➔ `SENT` ➔ `CLICKED/OPENED` (optional) ➔ `REPLIED` (halts sequence).
+Each state transition is logged to ensure no duplicate emails are sent even if the worker restarts.

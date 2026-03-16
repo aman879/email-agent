@@ -123,7 +123,9 @@ export function CampaignsPage() {
                       </label>
                       <button 
                         onClick={() => {
+                          const nextOrder = (campaign.steps?.length || 0) + 1;
                           setSelectedCampaignId(campaign.id);
+                          setStepData(prev => ({ ...prev, step_order: nextOrder }));
                           setIsAddStepModalOpen(true);
                         }}
                         className="text-muted-foreground hover:text-primary transition-colors" 

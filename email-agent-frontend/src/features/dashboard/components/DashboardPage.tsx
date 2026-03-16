@@ -87,7 +87,7 @@ export function DashboardPage() {
           </div>
           
           <div className="flex-1 flex items-end justify-between gap-1 p-6 h-[320px]">
-            {statsData?.chart_data.length === 0 ? (
+            {(!statsData?.chart_data || statsData.chart_data.length === 0) ? (
               <div className="w-full h-full flex items-center justify-center text-[#444] text-xs font-mono">
                 No delivery data yet
               </div>
@@ -117,7 +117,7 @@ export function DashboardPage() {
             <h3 className="font-medium text-sm text-[#EDEDED]">Audit Log</h3>
           </div>
           <div className="p-5 space-y-6 flex-1 overflow-y-auto">
-            {statsData?.recent_logs.length === 0 ? (
+            {(!statsData?.recent_logs || statsData.recent_logs.length === 0) ? (
               <div className="h-full flex items-center justify-center text-[#444] text-xs font-mono">
                 No activity recorded
               </div>
