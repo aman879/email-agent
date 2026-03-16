@@ -37,7 +37,7 @@ func TestAddWorkflowStep(t *testing.T) {
 		CampaignID: 1,
 		StepOrder:  1,
 		ActionType: "SEND_EMAIL",
-		Template:   testTemplate,
+		Templates:  []models.Template{{Body: testTemplate}},
 	}
 
 	jsonPayload, _ := json.Marshal(inputStep)
@@ -53,7 +53,7 @@ func TestAddWorkflowStep(t *testing.T) {
 		var savedStep models.WorkFlowStep
 		err := store.DB.First(&savedStep).Error
 		assert.NoError(t, err)
-		assert.Equal(t, testTemplate, savedStep.Template)
+		assert.Equal(t, testTemplate, savedStep.Templates)
 		assert.Equal(t, 1, savedStep.StepOrder)
 	}
 }
