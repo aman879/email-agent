@@ -157,7 +157,7 @@ func (h *Handler) GetStats(c echo.Context) error {
 	h.Store.DB.Model(&models.Lead{}).Count(&totalLeads)
 
 	var totalSent int64
-	h.Store.DB.Model(&models.SenderAccount{}).Select("SUM(sent_count)").Scan(&totalSent)
+	h.Store.DB.Model(&models.SenderAccount{}).Select("COALESCE(SUM(sent_count), 0)").Scan(&totalSent)
 
 	var totalReplied int64
 	h.Store.DB.Model(&models.Lead{}).Where("status = ?", "replied").Count(&totalReplied)
