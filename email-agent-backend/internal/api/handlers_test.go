@@ -51,9 +51,10 @@ func TestAddWorkflowStep(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 
 		var savedStep models.WorkFlowStep
-		err := store.DB.First(&savedStep).Error
+		err := store.DB.Preload("Templates").First(&savedStep).Error
 		assert.NoError(t, err)
-		assert.Equal(t, testTemplate, savedStep.Templates)
+		assert.Equal(t, 1, len(savedStep.Templates))
+		assert.Equal(t, testTemplate, savedStep.Templates[0].Body)
 		assert.Equal(t, 1, savedStep.StepOrder)
 	}
 }

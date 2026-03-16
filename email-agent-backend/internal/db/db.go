@@ -28,6 +28,7 @@ func NewStore(dbPath string, redisAdrr string) *Store {
 	err = db.AutoMigrate(
 		&models.Campaign{},
 		&models.WorkFlowStep{},
+		&models.Template{},
 		&models.Lead{},
 		&models.SenderAccount{},
 		&models.CampaignSender{},
