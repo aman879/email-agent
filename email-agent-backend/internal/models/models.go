@@ -25,11 +25,10 @@ type WorkFlowStep struct {
 	ID           uint   	`gorm:"primaryKey" json:"id"`
 	CampaignID   uint   	`json:"campaign_id"`
 	StepOrder    int    	`json:"step_order"`  // 1, 2, 3...
-	ActionType   string 	`json:"action_type"` // SEND_EMAIL, WAIT
+	ActionType   string 	`json:"action_type"` // SEND_EMAIL
 	ConditionKey string 	`json:"condition_key"`
 	ConditionVal string 	`json:"condition_val"`
 	DelayHours   int    	`json:"delay_hours"` // Used if ActionType is WAIT
-	Template     string     `json:"template" gorm:"-"`
 	Templates    []Template `json:"templates"`
 }
 

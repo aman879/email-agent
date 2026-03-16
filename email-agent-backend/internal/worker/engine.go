@@ -37,15 +37,20 @@ func (e *Engine) ProcessPendingLeads() {
 		log.Printf("Worker: Processing lead %s for step %d", lead.Email, lead.CurrentStep)
 		var step models.WorkFlowStep
 
-		err := e.Store.DB.Where("campaign_id = ? AND step_order = ?", lead.CampaignID, lead.CurrentStep).First(&step).Error
+		err := e.Store.DB.Preload("Templates").Where("campaign_id = ? AND step_order = ?", lead.CampaignID, lead.CurrentStep).First(&step).Error
 		if err != nil {
 			log.Printf("Skipping lead %s: %v", lead.Email, err)
 			continue
 		}
 
-		combinedTemplate := step.Template
+		if !e.ShouldProcess(&lead, &step) {
+			log.Printf("Lead %s doesn not match condition %s=%s. Skipping", lead.Email, step.ConditionKey, step.ConditionVal)
+			continue
+		}
 
-		rawSubject, rawBody, err := mail.ParseTemplate(combinedTemplate)
+		rawTemplate := e.getRoatedTemplate(&step, lead.ID)
+
+		rawSubject, rawBody, err := mail.ParseTemplate(rawTemplate)
 		if err != nil {
 			log.Printf("Template error for campaign %d: %v", lead.CampaignID, err)
 			continue
@@ -78,10 +83,25 @@ func (e *Engine) ProcessPendingLeads() {
 			continue
 		}
 
-		e.Store.DB.Model(&lead).Updates(map[string]interface{}{
-			"status":      "sent",
+		nextStepOrder := lead.CurrentStep + 1
+		var nextStep models.WorkFlowStep
+
+		err = e.Store.DB.Where("campaign_id = ? AND step_order = ?", lead.CampaignID, nextStepOrder).First(&nextStep).Error
+
+		newStatus := "completed"
+		nextRun := time.Now()
+
+		if err == nil {
+			newStatus = "waiting"
+			nextRun = nextRun.Add(time.Duration(step.DelayHours) * time.Hour)
+		}
+
+		e.Store.DB.Model(&lead).Updates(map[string]interface{} {
+			"status":      newStatus,
 			"last_msg_id": "tracked",
 			"sent_at":     time.Now(),
+			"next_action_at": nextRun,
+			"current_step": nextStepOrder,
 		})
 
 		e.Store.DB.Model(sender).Updates(map[string]interface{}{
@@ -100,6 +120,29 @@ func (e *Engine) ProcessPendingLeads() {
 	}
 }
 
+// ShouldProcess checks if the lead's CSV data matches the step condition
+func (e *Engine) ShouldProcess(lead *models.Lead, step *models.WorkFlowStep) bool {
+	// if no confition is set, always progress
+	if step.ConditionKey == "" {
+		return true
+	}
+
+	leadData := lead.GetMap()
+	val, exists := leadData[step.ConditionKey]
+
+	return exists && val == step.ConditionVal
+}
+
+// GetRotaedTemplate picks one template from the step
+func (e *Engine) getRoatedTemplate(step *models.WorkFlowStep, leadId uint) string {
+	if len(step.Templates) == 0 {
+		return ""
+	}
+
+	index := int(leadId) % len(step.Templates)
+	return step.Templates[index].Body
+	
+}
 // ResetDailyCounters zeroes out the SentCount for all account every midnight.
 func (e *Engine) ResetDailyCounters() {
 	e.Store.DB.Model(&models.SenderAccount{}).
