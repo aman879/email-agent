@@ -38,3 +38,8 @@ export interface AddWorkFlowStepRequest {
   delay_hours: number;
   template: string;
 }
+
+export interface LinkSenderRequest {
+  campaign_id: number;
+  sender_id: number;
+}

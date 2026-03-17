@@ -128,7 +128,7 @@ func (h *Handler) AddSenderAccount(c echo.Context) error {
 	}
 
 	if err := h.Store.DB.Create(&account).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error":"Could not save sender account"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not save sender account"})
 	}
 
 	return c.JSON(http.StatusCreated, account)
@@ -140,7 +140,29 @@ func (h *Handler) ListSenders(c echo.Context) error {
 	if err := h.Store.DB.Find(&accounts).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not fetch sender accounts"})
 	}
+
+	// Scrub passwords before returning
+	for i := range accounts {
+		accounts[i].SMTPPassword = ""
+		accounts[i].IMAPPassword = ""
+		accounts[i].Password = ""
+	}
+
 	return c.JSON(http.StatusOK, accounts)
+}
+
+// DeleteSenderAccount removes an email account and its links
+func (h *Handler) DeleteSenderAccount(c echo.Context) error {
+	id := c.Param("id")
+	
+	// Delete links first (implicit in some DBs but safer to be explicit)
+	h.Store.DB.Where("sender_id = ?", id).Delete(&models.CampaignSender{})
+	
+	if err := h.Store.DB.Delete(&models.SenderAccount{}, id).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not delete sender account"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Account deleted successfully"})
 }
 
 // LinkSenderToCampaign connects an email account to a campaign for rotation
@@ -150,7 +172,11 @@ func (h *Handler) LinkSenderToCampaign(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid mapping data"})
 	}
 
-	if err := h.Store.DB.Create(&link).Error; err != nil {
+	// Use FirstOrCreate to avoid "UNIQUE constraint failed" if the link already exists
+	if err := h.Store.DB.FirstOrCreate(&link, models.CampaignSender{
+		CampaignID: link.CampaignID,
+		SenderID:   link.SenderID,
+	}).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not link account to campaign"})
 	}
 
@@ -163,7 +189,7 @@ func (h *Handler) GetStats(c echo.Context) error {
 	h.Store.DB.Model(&models.Lead{}).Count(&totalLeads)
 
 	var totalSent int64
-	h.Store.DB.Model(&models.SenderAccount{}).Select("SUM(sent_count)").Scan(&totalSent)
+	h.Store.DB.Model(&models.SenderAccount{}).Select("COALESCE(SUM(sent_count), 0)").Scan(&totalSent)
 
 	var totalReplied int64
 	h.Store.DB.Model(&models.Lead{}).Where("status = ?", "replied").Count(&totalReplied)
@@ -178,7 +204,7 @@ func (h *Handler) GetStats(c echo.Context) error {
 		FROM leads 
 		WHERE sent_at > ? 
 		GROUP BY date(sent_at) 
-		ORDER BY date(sent_at) ASC`, 
+		ORDER BY date(sent_at) ASC`,
 		time.Now().AddDate(0, 0, -15)).Scan(&chartData)
 
 	// Fetch recent activity logs

@@ -2,6 +2,7 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -37,13 +38,21 @@ func (e *Engine) ProcessPendingLeads() {
 		log.Printf("Worker: Processing lead %s for step %d", lead.Email, lead.CurrentStep)
 		var step models.WorkFlowStep
 
-		err := e.Store.DB.Where("campaign_id = ? AND step_order = ?", lead.CampaignID, lead.CurrentStep).First(&step).Error
+		err := e.Store.DB.Preload("Templates").Where("campaign_id = ? AND step_order = ?", lead.CampaignID, lead.CurrentStep).First(&step).Error
 		if err != nil {
 			log.Printf("Skipping lead %s: %v", lead.Email, err)
 			continue
 		}
 
-		combinedTemplate := step.Template
+		combinedTemplate := ""
+		if len(step.Templates) > 0 {
+			combinedTemplate = step.Templates[0].Body
+		}
+
+		if combinedTemplate == "" {
+			log.Printf("Skipping lead %s: no template found for step %d", lead.Email, lead.CurrentStep)
+			continue
+		}
 
 		rawSubject, rawBody, err := mail.ParseTemplate(combinedTemplate)
 		if err != nil {
@@ -61,20 +70,38 @@ func (e *Engine) ProcessPendingLeads() {
 		finalSubject, _ := mail.RenderTemplate(rawSubject, leadData)
 		finalBody, _ := mail.RenderTemplate(rawBody, leadData)
 
+		// Handle legacy fallback
+		smtpUser := sender.SMTPUser
+		if smtpUser == "" {
+			smtpUser = sender.Email
+		}
+		smtpPass := sender.SMTPPassword
+		if smtpPass == "" {
+			smtpPass = sender.Password
+		}
+
 		emailReq := mail.EmailRequest{
-			From:     sender.Email,
-			To:       lead.Email,
-			Subject:  finalSubject,
-			Body:     finalBody,
-			Password: sender.Password,
-			Host:     sender.SMTPHost,
-			Port:     sender.SMTPPort,
+			From:         sender.Email,
+			To:           lead.Email,
+			Subject:      finalSubject,
+			Body:         finalBody,
+			SMTPUser:     smtpUser,
+			SMTPPassword: smtpPass,
+			Host:         sender.SMTPHost,
+			Port:         sender.SMTPPort,
 		}
 
 		err = mail.SendRawEmail(emailReq)
 		if err != nil {
 			log.Printf("Failed to send mail to %s: %v", lead.Email, err)
 			e.Store.DB.Model(&lead).Update("status", "failed")
+			
+			// Log activity error
+			e.Store.DB.Create(&models.ActivityLog{
+				CampaignID: lead.CampaignID,
+				Type:       "error",
+				Message:    fmt.Sprintf("Failed to send to %s: %v", lead.Email, err),
+			})
 			continue
 		}
 
@@ -96,7 +123,7 @@ func (e *Engine) ProcessPendingLeads() {
 			Message:    "Sent email to " + lead.Email,
 		})
 
-		log.Printf("Seccessfully sent email to %s using %s", lead.Email, sender.Email)
+		log.Printf("Successfully sent email to %s using %s", lead.Email, sender.Email)
 	}
 }
 

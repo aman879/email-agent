@@ -11,14 +11,15 @@ import (
 
 // EmailRequest holds the data needed to send a single mail
 type EmailRequest struct {
-	From     string
-	To       string
-	Subject  string
-	Body     string
-	Identity string
-	Password string
-	Host     string
-	Port     int
+	From         string
+	To           string
+	Subject      string
+	Body         string
+	Identity     string
+	SMTPUser     string
+	SMTPPassword string
+	Host         string
+	Port         int
 }
 
 // RenderTemplate is a generic helper to render both subject and Body
@@ -37,12 +38,15 @@ func RenderTemplate(raw string, data map[string]interface{}) (string, error) {
 
 // SendRawEmail execute the actual SMTP transaction
 func SendRawEmail(req EmailRequest) error {
-	auth := smtp.PlainAuth(req.Identity, req.From, req.Password, req.Host)
+	auth := smtp.PlainAuth(req.Identity, req.SMTPUser, req.SMTPPassword, req.Host)
 
 	// Construct the standard RFC 822 email format
-	msg := []byte("To: " + req.To + "\r\n" +
+	msg := []byte("From: " + req.From + "\r\n" +
+		"To: " + req.To + "\r\n" +
 		"Subject: " + req.Subject + "\r\n" +
-		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
+		"\r\n" +
 		req.Body + "\r\n")
 
 	addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
