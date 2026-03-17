@@ -1,4 +1,4 @@
-// Package api handles the HTTP request-response logic/
+// Package api handles the HTTP request-response logic
 package api
 
 import (
@@ -26,7 +26,7 @@ func (h *Handler) HealthCheck(c echo.Context) error {
 	})
 }
 
-// UploadCSV handles the mutlipart file upload from the dashboard
+// UploadCSV handles the multipart file upload from the dashboard
 func (h *Handler) UploadCSV(c echo.Context) error {
 	campaignIDStr := c.FormValue("campaign_id")
 	campaignID, err := strconv.ParseUint(campaignIDStr, 10, 32)
@@ -180,7 +180,7 @@ func (h *Handler) LinkSenderToCampaign(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not link account to campaign"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "Account linked Successfully"})
+	return c.JSON(http.StatusOK, map[string]string{"message": "Account linked successfully"})
 }
 
 // GetStats calculates real-time dashboard metrics

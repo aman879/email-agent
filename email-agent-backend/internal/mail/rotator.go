@@ -1,4 +1,4 @@
-// Package mail provides rotation logic to selct from multipler sender account
+// Package mail provides rotation logic to select from multiple sender accounts
 package mail
 
 import (
@@ -8,8 +8,8 @@ import (
 	"github.com/aman879/email-agent-backend/internal/models"
 )
 
-// GetAvialbleSender sleects an active sender account under its daily limit
-func GetAvialbleSender(store *db.Store, campaignID uint) (*models.SenderAccount, error) {
+// GetAvailableSender selects an active sender account under its daily limit
+func GetAvailableSender(store *db.Store, campaignID uint) (*models.SenderAccount, error) {
 	var account models.SenderAccount
 
 	result := store.DB.Table("sender_accounts").
@@ -20,7 +20,7 @@ func GetAvialbleSender(store *db.Store, campaignID uint) (*models.SenderAccount,
 		First(&account)
 
 	if result.Error != nil {
-		return nil, errors.New("no authorized sender accounts availabe for this campaign")
+		return nil, errors.New("no authorized sender accounts available for this campaign")
 	}
 
 	return &account, nil

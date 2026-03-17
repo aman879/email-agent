@@ -1,4 +1,4 @@
-// Package woeker manages the background loops and email dispatch logic
+// Package worker manages the background loops and email dispatch logic
 package worker
 
 import (
@@ -16,7 +16,7 @@ type Engine struct {
 	Store *db.Store
 }
 
-// StartRunning language the 24/7 background loops
+// StartRunning launches the 24/7 background loops
 func (e *Engine) StartRunning() {
 	log.Println("Background AI worker started...")
 
@@ -27,7 +27,7 @@ func (e *Engine) StartRunning() {
 	}
 }
 
-// ProcessPendingLeads finds leads ready for thier next email ste
+// ProcessPendingLeads finds leads ready for their next email step
 func (e *Engine) ProcessPendingLeads() {
 	var leads []models.Lead
 	now := time.Now()
@@ -44,15 +44,12 @@ func (e *Engine) ProcessPendingLeads() {
 			continue
 		}
 
-		combinedTemplate := ""
-		if len(step.Templates) > 0 {
-			combinedTemplate = step.Templates[0].Body
-		}
-
-		if combinedTemplate == "" {
-			log.Printf("Skipping lead %s: no template found for step %d", lead.Email, lead.CurrentStep)
+		if !e.ShouldProcess(&lead, &step) {
+			log.Printf("Lead %s does not match condition %s=%s. Skipping", lead.Email, step.ConditionKey, step.ConditionVal)
 			continue
 		}
+
+		rawTemplate := e.getRotatedTemplate(&step, lead.ID)
 
 		rawSubject, rawBody, err := mail.ParseTemplate(rawTemplate)
 		if err != nil {
@@ -60,7 +57,7 @@ func (e *Engine) ProcessPendingLeads() {
 			continue
 		}
 
-		sender, err := mail.GetAvialbleSender(e.Store, lead.CampaignID)
+		sender, err := mail.GetAvailableSender(e.Store, lead.CampaignID)
 		if err != nil {
 			log.Printf("Skipping lead %s: %v", lead.Email, err)
 			continue
@@ -95,7 +92,7 @@ func (e *Engine) ProcessPendingLeads() {
 		if err != nil {
 			log.Printf("Failed to send mail to %s: %v", lead.Email, err)
 			e.Store.DB.Model(&lead).Update("status", "failed")
-			
+
 			// Log activity error
 			e.Store.DB.Create(&models.ActivityLog{
 				CampaignID: lead.CampaignID,
@@ -118,12 +115,12 @@ func (e *Engine) ProcessPendingLeads() {
 			nextRun = nextRun.Add(time.Duration(step.DelayHours) * time.Hour)
 		}
 
-		e.Store.DB.Model(&lead).Updates(map[string]interface{} {
-			"status":      newStatus,
-			"last_msg_id": "tracked",
-			"sent_at":     time.Now(),
+		e.Store.DB.Model(&lead).Updates(map[string]interface{}{
+			"status":         newStatus,
+			"last_msg_id":    "tracked",
+			"sent_at":        time.Now(),
 			"next_action_at": nextRun,
-			"current_step": nextStepOrder,
+			"current_step":   nextStepOrder,
 		})
 
 		e.Store.DB.Model(sender).Updates(map[string]interface{}{
@@ -155,16 +152,17 @@ func (e *Engine) ShouldProcess(lead *models.Lead, step *models.WorkFlowStep) boo
 	return exists && val == step.ConditionVal
 }
 
-// GetRotaedTemplate picks one template from the step
-func (e *Engine) getRoatedTemplate(step *models.WorkFlowStep, leadId uint) string {
+// GetRotatedTemplate picks one template from the step
+func (e *Engine) getRotatedTemplate(step *models.WorkFlowStep, leadId uint) string {
 	if len(step.Templates) == 0 {
 		return ""
 	}
 
 	index := int(leadId) % len(step.Templates)
 	return step.Templates[index].Body
-	
+
 }
+
 // ResetDailyCounters zeroes out the SentCount for all account every midnight.
 func (e *Engine) ResetDailyCounters() {
 	e.Store.DB.Model(&models.SenderAccount{}).
