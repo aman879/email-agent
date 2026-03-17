@@ -37,6 +37,7 @@ func main() {
 
 	 e.GET("/senders", h.ListSenders)
 	e.POST("/senders", h.AddSenderAccount)
+	e.DELETE("/senders/:id", h.DeleteSenderAccount)
 	e.POST("/senders/link", h.LinkSenderToCampaign)
 
 	e.GET("/stats", h.GetStats)

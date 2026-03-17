@@ -38,3 +38,14 @@ export const useLinkSender = () => {
     },
   });
 };
+export const useDeleteSender = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/senders/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['senders'] });
+    },
+  });
+};

@@ -22,13 +22,14 @@ type Campaign struct {
 
 // WorkFlowStep defines what the AI should do and when.
 type WorkFlowStep struct {
-	ID           uint   	`gorm:"primaryKey" json:"id"`
-	CampaignID   uint   	`json:"campaign_id"`
-	StepOrder    int    	`json:"step_order"`  // 1, 2, 3...
-	ActionType   string 	`json:"action_type"` // SEND_EMAIL
-	ConditionKey string 	`json:"condition_key"`
-	ConditionVal string 	`json:"condition_val"`
-	DelayHours   int    	`json:"delay_hours"` // Used if ActionType is WAIT
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	CampaignID   uint       `json:"campaign_id"`
+	StepOrder    int        `json:"step_order"`  // 1, 2, 3...
+	ActionType   string     `json:"action_type"` // SEND_EMAIL, WAIT
+	ConditionKey string     `json:"condition_key"`
+	ConditionVal string     `json:"condition_val"`
+	DelayHours   int        `json:"delay_hours"` // Used if ActionType is WAIT
+	Template     string     `json:"template" gorm:"-"`
 	Templates    []Template `json:"templates"`
 }
 
@@ -53,17 +54,21 @@ type Lead struct {
 
 // SenderAccount stores the SMTP/IMAP credentials
 type SenderAccount struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	Email      string    `gorm:"uniqueIndex;not null" json:"email"`
-	SMTPHost   string    `json:"smtp_host"`
-	SMTPPort   int       `json:"smtp_port"`
-	IMAPHost   string    `json:"imap_host"`
-	IMAPPort   int       `json:"imap_port"`
-	Password   string    `json:"-"` // Neven export password to JSON
-	DailyLimit int       `gorm:"default:50" json:"daily_limit"`
-	SentCount  int       `gorm:"default:0" json:"sent_count"`
-	IsActive   bool      `gorm:"default:true" json:"is_active"`
-	LastUsedAt time.Time `json:"last_used_at"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Email        string    `gorm:"uniqueIndex;not null" json:"email"`
+	SMTPHost     string    `json:"smtp_host"`
+	SMTPPort     int       `json:"smtp_port"`
+	SMTPUser     string    `json:"smtp_user"`
+	SMTPPassword string    `json:"smtp_password"`
+	IMAPHost     string    `json:"imap_host"`
+	IMAPPort     int       `json:"imap_port"`
+	IMAPUser     string    `json:"imap_user"`
+	IMAPPassword string    `json:"imap_password"`
+	Password     string    `json:"password"` // Legacy field for backup
+	DailyLimit   int       `gorm:"default:50" json:"daily_limit"`
+	SentCount    int       `gorm:"default:0" json:"sent_count"`
+	IsActive     bool      `gorm:"default:true" json:"is_active"`
+	LastUsedAt   time.Time `json:"last_used_at"`
 }
 
 // CampaignSender links a specific email account to a specific campaign

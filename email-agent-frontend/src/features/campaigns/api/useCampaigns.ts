@@ -53,3 +53,16 @@ export const useUploadCSV = () => {
     },
   });
 };
+
+export const useLinkSender = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { campaign_id: number; sender_id: number }) => {
+      const response = await apiClient.post('/campaigns/link', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    },
+  });
+};
