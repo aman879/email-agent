@@ -10,6 +10,7 @@ import (
 	"github.com/aman879/email-agent-backend/internal/db"
 	"github.com/aman879/email-agent-backend/internal/models"
 	"github.com/aman879/email-agent-backend/internal/services"
+	"github.com/aman879/email-agent-backend/internal/worker"
 	"github.com/labstack/echo/v4"
 )
 
@@ -62,6 +63,15 @@ func (h *Handler) UploadCSV(c echo.Context) error {
 	})
 }
 
+func (h *Handler) StartWorker(c echo.Context) error {
+	workerEngine := &worker.Engine{Store: h.Store}
+	go workerEngine.StartRunning()
+	
+	return c.JSON(http.StatusOK, map[string]string{
+		"status":  "success",
+		"message": "Background AI worker started",
+	})
+}
 // CreateCampaign saves a new campaign name to the database
 func (h *Handler) CreateCampaign(c echo.Context) error {
 	cp := new(models.Campaign)

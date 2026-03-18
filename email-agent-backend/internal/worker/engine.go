@@ -107,7 +107,7 @@ func (e *Engine) ProcessPendingLeads() {
 
 		err = e.Store.DB.Where("campaign_id = ? AND step_order = ?", lead.CampaignID, nextStepOrder).First(&nextStep).Error
 
-		newStatus := "completed"
+		newStatus := "sent"
 		nextRun := time.Now()
 
 		if err == nil {

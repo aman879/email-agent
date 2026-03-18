@@ -5,11 +5,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aman879/email-agent-backend/internal/api"
 	"github.com/aman879/email-agent-backend/internal/config"
 	"github.com/aman879/email-agent-backend/internal/db"
-	"github.com/aman879/email-agent-backend/internal/worker"
+	"github.com/aman879/email-agent-backend/internal/mail"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -19,8 +20,15 @@ func main() {
 	cfg := config.LoadConfig()
 	store := db.NewStore(cfg.DBPath, cfg.RedisAddr)
 
-	workerEngine := &worker.Engine{Store: store}
-	go workerEngine.StartRunning()
+	watcher := &mail.Watcher{Store: store}
+	go func() {
+		log.Printf("Reply Watcher started...")
+		ticker := time.NewTicker(1 * time.Minute)
+		for range ticker.C {
+			log.Printf("Watcher: Checking for new replies...")
+			watcher.CheckAllInboxed()
+		}
+	}()
 
 	e := echo.New()
 
@@ -41,6 +49,8 @@ func main() {
 	e.POST("/senders/link", h.LinkSenderToCampaign)
 
 	e.GET("/stats", h.GetStats)
+
+	e.POST("/worker/start", h.StartWorker)
 
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 	serverPort := fmt.Sprintf(":%s", cfg.Port)
